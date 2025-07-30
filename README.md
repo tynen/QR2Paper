@@ -27,8 +27,31 @@ QR2Paper is a web application that generates a printable PDF containing a QR cod
    # or
    docker compose up --build
    ```
+
 4. **Access the app:**
    Open [http://localhost:5000](http://localhost:5000) in your browser.
+
+## Screenshots
+
+### Main Webpage
+This is the main page where you enter a URL and description:
+
+![Main Webpage](webpage1.png)
+
+### After Printing
+What you see after submitting a print job:
+
+![After Print](webpage2.png)
+
+### Printer Settings Page
+Configure or select your printer:
+
+![Printer Settings](printersettings_webpage3.png)
+
+### Example Print Output
+An example of the printed page with QR code and description:
+
+![Example Print](example_print.jpg)
 
 ## Deploy with Docker Hub
 You can also pull the latest image from Docker Hub:
