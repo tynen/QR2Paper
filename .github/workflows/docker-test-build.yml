@@ -1,13 +1,8 @@
-      - name: Install Ruff
-        run: pip install ruff
-
-      - name: Run Ruff Lint
-        run: ruff app/
 name: Test Docker Build (PR)
 
 on:
   pull_request:
-    branches: [ main]
+    branches: [ main ]
 
 jobs:
   test-build:
@@ -15,6 +10,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Linting, Formatting, and Security Tools
+        run: pip install ruff black mypy pip-audit
+
+      - name: Run Ruff Lint
+        run: ruff app/
+
+      - name: Run Black Formatting Check
+        run: black --check app/
+
+      - name: Run Mypy Type Check
+        run: mypy app/
+
+      - name: Run pip-audit (dependency security)
+        run: pip-audit
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
