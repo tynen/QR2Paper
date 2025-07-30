@@ -3,4 +3,3 @@ qrcode
 Pillow
 reportlab
 pycups
-ruff
