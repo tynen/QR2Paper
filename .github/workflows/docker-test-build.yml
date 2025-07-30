@@ -1,0 +1,33 @@
+name: Test Docker Build (PR)
+
+on:
+  pull_request:
+    branches: [ main]
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test Docker build (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: false
+          load: true
+          tags: qr2paper:test
+
+      - name: Run container and check startup
+        run: |
+          docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test
+          sleep 10
+          docker logs qr2paper-test
+          docker ps -a
+          docker stop qr2paper-test
+          docker rm qr2paper-test

@@ -1,0 +1,6 @@
+Flask
+qrcode
+Pillow
+reportlab
+pycups
+ruff
