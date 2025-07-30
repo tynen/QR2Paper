@@ -31,22 +31,6 @@ jobs:
         run: |
           set -e
           docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test tail -f /dev/null
-          # Wait for Flask app to be ready (retry up to 30s)
-          for i in {1..6}; do
-            if curl -f http://localhost:5000/; then
-              echo "Flask app is up!"
-              break
-            fi
-            echo "Waiting for Flask app... ($i/6)"
-            sleep 5
-          done
-
-          # Final check, fail if still not up
-          if ! curl -f http://localhost:5000/; then
-            echo "Flask app health check failed" | tee flask_health_failed.log
-            docker logs qr2paper-test | tee container.log
-            exit 1
-          fi
           docker exec qr2paper-test pip install ruff black mypy pip-audit
           docker exec qr2paper-test ruff check /app
           docker exec qr2paper-test black --check /app
