@@ -15,7 +15,7 @@ jobs:
         run: pip install ruff black mypy pip-audit
 
       - name: Run Ruff Lint
-        run: ruff app/
+        run: ruff check app/
 
       - name: Run Black Formatting Check
         run: black --check app/
