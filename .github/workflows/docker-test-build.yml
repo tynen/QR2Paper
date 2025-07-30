@@ -11,23 +11,42 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Linting, Formatting, and Security Tools
-        run: pip install ruff black mypy pip-audit
 
-      - name: Run Ruff Lint
-        run: ruff check app/
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Run Black Formatting Check
-        run: black --check app/
+      - name: Test Docker build (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: false
+          load: true
+          tags: qr2paper:test
 
-      - name: Run Mypy Type Check
-        run: mypy --ignore-missing-imports app/
+      - name: Run container for tests
+        run: |
+          docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test
+          sleep 10
 
-      - name: Install dependencies for pip-audit
-        run: pip install --upgrade -r app/requirements.txt
+      - name: Run Ruff Lint in container
+        run: docker exec qr2paper-test ruff check /app
 
-      - name: Run pip-audit (dependency security)
-        run: pip-audit -r app/requirements.txt
+      - name: Run Black Formatting Check in container
+        run: docker exec qr2paper-test black --check /app
+
+      - name: Run Mypy Type Check in container
+        run: docker exec qr2paper-test mypy --ignore-missing-imports /app
+
+      - name: Run pip-audit (dependency security) in container
+        run: docker exec qr2paper-test pip-audit -r /app/requirements.txt
+
+      - name: Show container logs and cleanup
+        run: |
+          docker logs qr2paper-test
+          docker ps -a
+          docker stop qr2paper-test
+          docker rm qr2paper-test
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
