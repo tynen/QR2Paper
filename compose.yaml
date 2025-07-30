@@ -1,0 +1,9 @@
+services:
+  qr-printer:
+    build: ./app
+    ports:
+      - "5000:5000"
+    environment:
+      - PRINTER_URI=ipp://NPIF85549.sinrud.lan/ipp/print
+      - FLASK_ENV=production
+    # No need to mount host CUPS socket, container runs its own CUPS
