@@ -1,9 +1,9 @@
-
 import os
 import io
 import logging
 import json
 import traceback
+import secrets
 from flask import Flask, render_template, request, flash, redirect
 import qrcode
 from reportlab.pdfgen import canvas
@@ -12,72 +12,89 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 import cups
 
-
-
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'CHANGE_ME')
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_urlsafe(64))
 logger = logging.getLogger("qr_print_app")
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-SETTINGS_FILE = 'printer_settings.json'
+SETTINGS_FILE = "printer_settings.json"
+
+
+# Global error handler for 500 Internal Server Error
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"Unhandled error: {e}")
+    return render_template("500.html"), 500
+
 
 def load_printer_setting():
     if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, 'r') as f:
+        with open(SETTINGS_FILE, "r") as f:
             data = json.load(f)
-            return data.get('printer')
+            return data.get("printer")
     return None
 
+
 def save_printer_setting(printer_name):
-    with open(SETTINGS_FILE, 'w') as f:
-        json.dump({'printer': printer_name}, f)
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump({"printer": printer_name}, f)
 
 
 ## Duplicate/errant settings() removed. Only the correct printer_settings() route remains above.
 
-@app.route('/', methods=['GET'])
+
+@app.route("/", methods=["GET"])
 def index():
     logger.info("Rendering index page")
-    return render_template('index.html')
+    return render_template("index.html")
 
-@app.route('/print', methods=['POST'])
+
+@app.route("/print", methods=["POST"])
 def print_url():
-    url = request.form.get('url', '').strip()
-    desc = request.form.get('description', '').strip()
+    url = request.form.get("url", "").strip()
+    desc = request.form.get("description", "").strip()
     logger.info(f"Received print request: url={url}, desc={desc}")
     if not url or not desc:
-        flash('Both URL and description are required.')
+        flash("Both URL and description are required.")
         logger.warning("Missing URL or description.")
-        return redirect('/')
+        return redirect("/")
     if not is_valid_url(url):
-        flash('Invalid URL provided. Please enter a valid URL starting with http:// or https://')
+        flash(
+            "Invalid URL provided. Please enter a valid URL starting with http:// or https://"
+        )
         logger.warning(f"Invalid URL: {url}")
-        return redirect('/')
+        return redirect("/")
     try:
         qr_img = generate_qr_code(url)
     except Exception as e:
         logger.error(f"QR code generation failed: {e}\n{traceback.format_exc()}")
-        flash('Failed to generate QR code. Please try again.')
-        return redirect('/')
+        flash("Failed to generate QR code. Please try again.")
+        return redirect("/")
     try:
         pdf_bytes = create_pdf(qr_img, desc)
     except Exception as e:
         logger.error(f"PDF generation failed: {e}\n{traceback.format_exc()}")
-        flash('Failed to generate PDF. Please try again.')
-        return redirect('/')
+        flash("Failed to generate PDF. Please try again.")
+        return redirect("/")
     try:
         send_to_printer(pdf_bytes)
     except cups.IPPError as e:
-        logger.error(f"Printer unreachable or CUPS error: {e}\n{traceback.format_exc()}")
-        flash('Printer unreachable or CUPS error. Please check your printer connection.')
-        return redirect('/')
+        logger.error(
+            f"Printer unreachable or CUPS error: {e}\n{traceback.format_exc()}"
+        )
+        flash(
+            "Printer unreachable or CUPS error. Please check your printer connection."
+        )
+        return redirect("/")
     except Exception as e:
         logger.error(f"Print job failed: {e}\n{traceback.format_exc()}")
-        flash(f'Failed to send PDF to printer. Error: {e}. Please try again.')
-        return redirect('/')
+        flash(f"Failed to send PDF to printer. Error: {e}. Please try again.")
+        return redirect("/")
     logger.info("Print job completed successfully.")
-    return render_template('result.html', status='Printed successfully!')
-@app.route('/settings', methods=['GET', 'POST'])
+    return render_template("result.html", status="Printed successfully!")
+
+
+@app.route("/settings", methods=["GET", "POST"])
 def printer_settings():
     message = None
     printers = []
@@ -91,9 +108,9 @@ def printer_settings():
             message = "No printers found. Please check your CUPS setup."
     except Exception as e:
         message = f"CUPS connection error: {e}"
-    if request.method == 'POST':
-        chosen = request.form.get('printer')
-        manual_printer = request.form.get('manual_printer', '').strip()
+    if request.method == "POST":
+        chosen = request.form.get("printer")
+        manual_printer = request.form.get("manual_printer", "").strip()
         if manual_printer:
             # Save manual printer URI directly
             save_printer_setting(manual_printer)
@@ -108,31 +125,39 @@ def printer_settings():
             message = f"Printer '{chosen}' saved as default."
         else:
             message = "Invalid printer selection."
-    return render_template('settings.html', printers=printers, selected_printer=selected_printer, message=message)
+    return render_template(
+        "settings.html",
+        printers=printers,
+        selected_printer=selected_printer,
+        message=message,
+    )
 
 
 def is_valid_url(url: str) -> bool:
     from urllib.parse import urlparse
+
     try:
         result = urlparse(url)
         return result.scheme in ("http", "https") and bool(result.netloc)
     except Exception:
         return False
 
+
 def generate_qr_code(data: str) -> Image.Image:
     logger.info(f"Generating QR code for: {data}")
     qr = qrcode.QRCode(box_size=10, border=4)
     qr.add_data(data)
     qr.make(fit=True)
-    img = qr.make_image(fill_color='black', back_color='white').convert('RGB')
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
     return img
+
 
 def create_pdf(qr_img: Image.Image, description: str) -> bytes:
     logger.info("Generating PDF with QR code and description.")
     buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=(200*mm, 250*mm))
+    c = canvas.Canvas(buf, pagesize=(200 * mm, 250 * mm))
     qr_buf = io.BytesIO()
-    qr_img.save(qr_buf, format='PNG')
+    qr_img.save(qr_buf, format="PNG")
     qr_buf.seek(0)
     c.drawImage(ImageReader(qr_buf), 50, 400, width=100, height=100)
     c.setFont("Helvetica", 12)
@@ -141,8 +166,12 @@ def create_pdf(qr_img: Image.Image, description: str) -> bytes:
     c.save()
     return buf.getvalue()
 
+
 def send_to_printer(pdf_bytes: bytes) -> None:
-    import getpass, pwd, os, time
+    import getpass
+    import os
+    import time
+
     logger.info("Sending PDF to printer.")
     try:
         user = getpass.getuser()
@@ -150,14 +179,15 @@ def send_to_printer(pdf_bytes: bytes) -> None:
         user = str(os.geteuid())
     logger.info(f"App running as user: {user} (uid={os.geteuid()})")
     import subprocess
+
     # Determine printer name
-    printer = load_printer_setting() or os.getenv('PRINTER_NAME')
+    printer = load_printer_setting() or os.getenv("PRINTER_NAME")
     if not printer:
-        printer = 'autoprinter'
+        printer = "autoprinter"
     logger.info(f"Using printer: {printer}")
-    pdf_path = '/tmp/qr_print.pdf'
+    pdf_path = "/tmp/qr_print.pdf"
     try:
-        with open(pdf_path, 'wb') as f:
+        with open(pdf_path, "wb") as f:
             f.write(pdf_bytes)
             f.flush()
             os.fsync(f.fileno())
@@ -168,7 +198,9 @@ def send_to_printer(pdf_bytes: bytes) -> None:
     # Log file permissions
     try:
         stat = os.stat(pdf_path)
-        logger.info(f"PDF file permissions: {oct(stat.st_mode)} owner: {stat.st_uid}:{stat.st_gid}")
+        logger.info(
+            f"PDF file permissions: {oct(stat.st_mode)} owner: {stat.st_uid}:{stat.st_gid}"
+        )
     except Exception as e:
         logger.warning(f"Could not stat PDF file: {e}")
     # Optional: short delay to ensure file is ready

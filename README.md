@@ -48,7 +48,7 @@ Configure or select your printer:
 
 ![Printer Settings](printersettings_webpage3.png)
 
-### Example Print Output
+### Example Print Output 
 An example of the printed page with QR code and description:
 
 ![Example Print](example_print.jpg)

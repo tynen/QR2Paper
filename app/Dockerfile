@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.13-bookworm
 
 
 # Install system dependencies and CUPS
@@ -28,8 +28,7 @@ WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --upgrade pip --no-warn-script-location --no-cache-dir \
-    && pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir ruff
+    && pip install --no-cache-dir -r requirements.txt
 
 
 COPY . /app
