@@ -6,7 +6,7 @@ pycups
 
 certifi==2025.7.14
 configobj==5.0.9
-cryptography==44.0.1
+cryptography==45.0.5
 idna==3.10
 jinja2==3.1.6
 requests==2.32.4
