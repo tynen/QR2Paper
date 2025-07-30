@@ -1,9 +1,5 @@
 
-# Global error handler for 500 Internal Server Error
-@app.errorhandler(500)
-def server_error(e):
-    logger.error(f"Unhandled error: {e}")
-    return render_template("500.html"), 500
+
 import os
 import io
 import logging
@@ -18,14 +14,18 @@ from reportlab.lib.utils import ImageReader
 from PIL import Image
 import cups
 
-
 app = Flask(__name__)
-
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_urlsafe(64))
 logger = logging.getLogger("qr_print_app")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 SETTINGS_FILE = "printer_settings.json"
+
+# Global error handler for 500 Internal Server Error
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"Unhandled error: {e}")
+    return render_template("500.html"), 500
 
 
 def load_printer_setting():
