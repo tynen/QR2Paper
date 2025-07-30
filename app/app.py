@@ -1,3 +1,9 @@
+
+# Global error handler for 500 Internal Server Error
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"Unhandled error: {e}")
+    return render_template("500.html"), 500
 import os
 import io
 import logging
