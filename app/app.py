@@ -3,6 +3,7 @@ import io
 import logging
 import json
 import traceback
+import secrets
 from flask import Flask, render_template, request, flash, redirect
 import qrcode
 from reportlab.pdfgen import canvas
@@ -13,12 +14,8 @@ import cups
 
 
 app = Flask(__name__)
-import secrets
-if "SECRET_KEY" in os.environ:
-    app.secret_key = os.environ["SECRET_KEY"]
-else:
-    # Generate a long, random secret key for container use if not set
-    app.secret_key = secrets.token_urlsafe(64)
+
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_urlsafe(64))
 logger = logging.getLogger("qr_print_app")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
