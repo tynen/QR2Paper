@@ -1,5 +1,3 @@
-
-
 import os
 import io
 import logging
@@ -20,6 +18,7 @@ logger = logging.getLogger("qr_print_app")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 SETTINGS_FILE = "printer_settings.json"
+
 
 # Global error handler for 500 Internal Server Error
 @app.errorhandler(500)
