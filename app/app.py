@@ -142,7 +142,9 @@ def create_pdf(qr_img: Image.Image, description: str) -> bytes:
     return buf.getvalue()
 
 def send_to_printer(pdf_bytes: bytes) -> None:
-    import getpass, pwd, os, time
+    import getpass
+    import os
+    import time
     logger.info("Sending PDF to printer.")
     try:
         user = getpass.getuser()
