@@ -13,7 +13,12 @@ import cups
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "CHANGE_ME")
+import secrets
+if "SECRET_KEY" in os.environ:
+    app.secret_key = os.environ["SECRET_KEY"]
+else:
+    # Generate a long, random secret key for container use if not set
+    app.secret_key = secrets.token_urlsafe(64)
 logger = logging.getLogger("qr_print_app")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 

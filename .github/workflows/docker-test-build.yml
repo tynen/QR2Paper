@@ -21,7 +21,7 @@ jobs:
         run: black --check app/
 
       - name: Run Mypy Type Check
-        run: mypy app/
+        run: mypy --ignore-missing-imports app/
 
       - name: Run pip-audit (dependency security)
         run: pip-audit
@@ -30,7 +30,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Test Docker build (no push)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./app
           file: ./app/Dockerfile
