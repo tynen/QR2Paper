@@ -24,10 +24,11 @@ jobs:
           load: true
           tags: qr2paper:test
 
-      - name: Run container and run all checks
+      - name: Run container and install check tools
         run: |
           docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test tail -f /dev/null
           sleep 5
+          docker exec qr2paper-test pip install ruff black mypy pip-audit
           docker exec qr2paper-test ruff check /app
           docker exec qr2paper-test black --check /app
           docker exec qr2paper-test mypy --ignore-missing-imports /app
