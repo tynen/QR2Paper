@@ -23,6 +23,8 @@ jobs:
           push: false
           load: true
           tags: qr2paper:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run container and install check tools
         run: |
