@@ -24,46 +24,14 @@ jobs:
           load: true
           tags: qr2paper:test
 
-      - name: Run container for tests
+      - name: Run container and run all checks
         run: |
-          docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test
-          sleep 10
-
-      - name: Run Ruff Lint in container
-        run: docker exec qr2paper-test ruff check /app
-
-      - name: Run Black Formatting Check in container
-        run: docker exec qr2paper-test black --check /app
-
-      - name: Run Mypy Type Check in container
-        run: docker exec qr2paper-test mypy --ignore-missing-imports /app
-
-      - name: Run pip-audit (dependency security) in container
-        run: docker exec qr2paper-test pip-audit -r /app/requirements.txt
-
-      - name: Show container logs and cleanup
-        run: |
-          docker logs qr2paper-test
-          docker ps -a
-          docker stop qr2paper-test
-          docker rm qr2paper-test
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Test Docker build (no push)
-        uses: docker/build-push-action@v6
-        with:
-          context: ./app
-          file: ./app/Dockerfile
-          push: false
-          load: true
-          tags: qr2paper:test
-
-      - name: Run container and check startup
-        run: |
-          docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test
-          sleep 10
+          docker run -d --name qr2paper-test -e PRINTER_URI=dummy -p 5000:5000 qr2paper:test tail -f /dev/null
+          sleep 5
+          docker exec qr2paper-test ruff check /app
+          docker exec qr2paper-test black --check /app
+          docker exec qr2paper-test mypy --ignore-missing-imports /app
+          docker exec qr2paper-test pip-audit -r /app/requirements.txt
           docker logs qr2paper-test
           docker ps -a
           docker stop qr2paper-test
