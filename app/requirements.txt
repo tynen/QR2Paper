@@ -4,7 +4,7 @@ Pillow
 reportlab
 pycups
 
-certifi==2026.1.4
+certifi==2026.2.25
 configobj==5.0.9
 cryptography==46.0.5
 
