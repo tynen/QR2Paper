@@ -29,18 +29,45 @@ def server_error(e):
 
 def load_printer_setting():
     if os.path.exists(SETTINGS_FILE):
-        with open(SETTINGS_FILE, "r") as f:
-            data = json.load(f)
-            return data.get("printer")
+        try:
+            with open(SETTINGS_FILE, "r") as f:
+                data = json.load(f)
+                return data.get("printer")
+        except Exception as e:
+            logger.error(f"Error loading settings: {e}")
     return None
 
 
 def save_printer_setting(printer_name):
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump({"printer": printer_name}, f)
+    try:
+        with open(SETTINGS_FILE, "w") as f:
+            json.dump({"printer": printer_name}, f)
+    except Exception as e:
+        logger.error(f"Error saving settings: {e}")
 
 
-## Duplicate/errant settings() removed. Only the correct printer_settings() route remains above.
+def register_printer(uri, name="manualprinter"):
+    import subprocess
+    logger.info(f"Attempting to register printer: {name} with URI: {uri}")
+    try:
+        # Use everywhere driver for IPP/AirPrint compatibility
+        cmd = ["sudo", "lpadmin", "-p", name, "-E", "-v", uri, "-m", "everywhere"]
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        # Verify it was added
+        subprocess.run(["lpstat", "-p", name], check=True, capture_output=True)
+        logger.info(f"Successfully registered printer {name}")
+        return name
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to register printer {name}: {e.stderr}")
+        # Try without -m everywhere as fallback
+        try:
+            logger.info("Retrying registration without '-m everywhere'...")
+            cmd = ["sudo", "lpadmin", "-p", name, "-E", "-v", uri]
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            return name
+        except Exception as e2:
+            logger.error(f"Fallback registration also failed: {e2}")
+            raise RuntimeError(f"Could not register printer URI: {e.stderr}")
 
 
 @app.route("/", methods=["GET"])
@@ -78,14 +105,6 @@ def print_url():
         return redirect("/")
     try:
         send_to_printer(pdf_bytes)
-    except cups.IPPError as e:
-        logger.error(
-            f"Printer unreachable or CUPS error: {e}\n{traceback.format_exc()}"
-        )
-        flash(
-            "Printer unreachable or CUPS error. Please check your printer connection."
-        )
-        return redirect("/")
     except Exception as e:
         logger.error(f"Print job failed: {e}\n{traceback.format_exc()}")
         flash(f"Failed to send PDF to printer. Error: {e}. Please try again.")
@@ -102,29 +121,41 @@ def printer_settings():
     try:
         conn = cups.Connection()
         printers = list(conn.getPrinters().keys())
-        if printers:
-            selected_printer = load_printer_setting() or printers[0]
-        else:
-            message = "No printers found. Please check your CUPS setup."
+        selected_printer = load_printer_setting()
+        if not selected_printer and printers:
+            selected_printer = printers[0]
     except Exception as e:
+        logger.error(f"CUPS connection error: {e}")
         message = f"CUPS connection error: {e}"
+        
     if request.method == "POST":
         chosen = request.form.get("printer")
         manual_printer = request.form.get("manual_printer", "").strip()
+        
         if manual_printer:
-            # Save manual printer URI directly
-            save_printer_setting(manual_printer)
-            selected_printer = manual_printer
-            message = f"Manual printer '{manual_printer}' saved as default."
-            # Optionally, add to printers list for display
-            if manual_printer not in printers:
-                printers.append(manual_printer)
-        elif chosen in printers:
+            if "://" in manual_printer:
+                try:
+                    # If it looks like a URI, register it
+                    name = register_printer(manual_printer)
+                    save_printer_setting(name)
+                    selected_printer = name
+                    message = f"Printer URI registered as '{name}' and saved as default."
+                    # Refresh printers list
+                    try:
+                        conn = cups.Connection()
+                        printers = list(conn.getPrinters().keys())
+                    except: pass
+                except Exception as e:
+                    message = f"Error: {e}"
+            else:
+                save_printer_setting(manual_printer)
+                selected_printer = manual_printer
+                message = f"Printer '{manual_printer}' saved as default."
+        elif chosen:
             save_printer_setting(chosen)
             selected_printer = chosen
             message = f"Printer '{chosen}' saved as default."
-        else:
-            message = "Invalid printer selection."
+            
     return render_template(
         "settings.html",
         printers=printers,
@@ -184,6 +215,16 @@ def send_to_printer(pdf_bytes: bytes) -> None:
     printer = load_printer_setting() or os.getenv("PRINTER_NAME")
     if not printer:
         printer = "autoprinter"
+    
+    # Safeguard: if the printer setting is a URI, register it now
+    if "://" in printer:
+        logger.info(f"Printer setting looks like a URI, attempting registration: {printer}")
+        try:
+            printer = register_printer(printer)
+        except Exception as e:
+            logger.error(f"Failed to register URI {printer}: {e}")
+            # We continue anyway, but it will likely fail below
+
     logger.info(f"Using printer: {printer}")
     pdf_path = "/tmp/qr_print.pdf"
     try:
