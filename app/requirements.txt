@@ -8,7 +8,7 @@ certifi==2026.2.25
 configobj==5.0.9
 cryptography==46.0.7
 
-idna==3.11
+idna==3.14
 jinja2==3.1.6
 requests==2.33.1
 setuptools==82.0.1
